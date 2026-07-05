@@ -1,0 +1,2 @@
+bun add papaparse simple-statistics recharts@2.15.0
+bun add -d @types/papaparse
