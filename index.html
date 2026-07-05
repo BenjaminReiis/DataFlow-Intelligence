@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataFlow Intelligence — Plataforma de Análise de Dados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0B1220;
+    --panel:#121B2E;
+    --panel-2:#0E1626;
+    --border:#1E2A44;
+    --border-soft:#182238;
+    --text:#E7ECF3;
+    --muted:#8592A6;
+    --muted-2:#5C687D;
+    --teal:#35D0BA;
+    --teal-dim:#1E4A44;
+    --amber:#F2A65A;
+    --coral:#FF6B6B;
+    --indigo:#6C8CFF;
+    --radius:14px;
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--teal);color:#08110F;}
+  a{color:inherit;text-decoration:none;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg);}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+
+  /* ---------- LAYOUT ---------- */
+  .app{display:grid;grid-template-columns:260px 1fr;min-height:100vh;}
+  .sidebar{
+    background:var(--panel-2);
+    border-right:1px solid var(--border-soft);
+    padding:28px 20px;
+    position:sticky;top:0;height:100vh;
+    display:flex;flex-direction:column;gap:28px;
+    overflow-y:auto;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:0 4px;}
+  .brand-mark{
+    width:34px;height:34px;border-radius:9px;
+    background:linear-gradient(135deg,var(--teal),var(--indigo));
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);font-weight:600;color:#08110F;font-size:15px;
+    flex-shrink:0;
+  }
+  .brand-text h1{font-family:var(--font-display);font-size:16px;font-weight:600;letter-spacing:-0.01em;}
+  .brand-text span{font-family:var(--font-mono);font-size:10.5px;color:var(--muted);letter-spacing:0.04em;text-transform:uppercase;}
+
+  .nav-group{display:flex;flex-direction:column;gap:2px;}
+  .nav-label{font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;color:var(--muted-2);text-transform:uppercase;padding:8px 12px 6px;}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;
+    padding:9px 12px;border-radius:9px;
+    color:var(--muted);font-size:13.5px;font-weight:500;
+    cursor:pointer;transition:background .15s,color .15s;
+    border:1px solid transparent;
+  }
+  .nav-item:hover{background:var(--panel);color:var(--text);}
+  .nav-item.active{background:var(--teal-dim);color:var(--teal);border-color:rgba(53,208,186,.25);}
+  .nav-item .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.6;flex-shrink:0;}
+
+  .sidebar-foot{margin-top:auto;padding-top:16px;border-top:1px solid var(--border-soft);}
+  .status-pill{
+    display:flex;align-items:center;gap:8px;
+    font-family:var(--font-mono);font-size:11px;color:var(--muted);
+    padding:8px 10px;background:var(--panel);border-radius:9px;border:1px solid var(--border-soft);
+  }
+  .status-pill .blip{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 3px rgba(53,208,186,.18);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+  .main{padding:0;overflow-x:hidden;}
+  .topbar{
+    position:sticky;top:0;z-index:20;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 36px;background:rgba(11,18,32,.85);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border-soft);
+  }
+  .topbar h2{font-family:var(--font-display);font-size:15px;font-weight:600;}
+  .topbar-meta{font-family:var(--font-mono);font-size:11.5px;color:var(--muted);}
+  .topbar-actions{display:flex;gap:10px;}
+  .btn{
+    font-family:var(--font-body);font-size:13px;font-weight:600;
+    padding:9px 16px;border-radius:9px;cursor:pointer;border:1px solid transparent;
+    display:inline-flex;align-items:center;gap:7px;transition:transform .1s, opacity .15s;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:var(--teal);color:#08110F;}
+  .btn-primary:hover{opacity:.9;}
+  .btn-ghost{background:transparent;border-color:var(--border);color:var(--text);}
+  .btn-ghost:hover{background:var(--panel);}
+
+  section{padding:40px 36px;border-bottom:1px solid var(--border-soft);}
+  .section-head{margin-bottom:24px;}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:8px;}
+  .section-head h2{font-family:var(--font-display);font-size:26px;font-weight:600;letter-spacing:-0.01em;margin-bottom:8px;}
+  .section-head p{color:var(--muted);max-width:640px;font-size:14px;}
+
+  .grid{display:grid;gap:18px;}
+  .grid-4{grid-template-columns:repeat(4,1fr);}
+  .grid-3{grid-template-columns:repeat(3,1fr);}
+  .grid-2{grid-template-columns:repeat(2,1fr);}
+  @media (max-width:1200px){.grid-4{grid-template-columns:repeat(2,1fr);}.grid-3{grid-template-columns:repeat(2,1fr);}}
+
+  .card{
+    background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius);
+    padding:20px;
+  }
+  .card-title{font-size:12.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;}
+
+  /* KPI cards */
+  .kpi .value{font-family:var(--font-display);font-size:28px;font-weight:600;letter-spacing:-0.01em;}
+  .kpi .delta{font-family:var(--font-mono);font-size:12px;margin-top:6px;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;}
+  .delta.up{color:var(--teal);background:rgba(53,208,186,.1);}
+  .delta.down{color:var(--coral);background:rgba(255,107,107,.1);}
+  .kpi canvas{margin-top:12px;height:36px!important;}
+
+  /* HERO */
+  .hero{padding:56px 36px 40px;border-bottom:1px solid var(--border-soft);position:relative;overflow:hidden;}
+  .hero::before{
+    content:'';position:absolute;top:-200px;right:-200px;width:500px;height:500px;border-radius:50%;
+    background:radial-gradient(circle,rgba(53,208,186,.12),transparent 70%);pointer-events:none;
+  }
+  .hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:40px;flex-wrap:wrap;margin-bottom:36px;}
+  .hero-copy{max-width:560px;}
+  .hero-copy .eyebrow{margin-bottom:14px;}
+  .hero-copy h1{font-family:var(--font-display);font-size:38px;font-weight:700;line-height:1.12;letter-spacing:-0.02em;margin-bottom:16px;}
+  .hero-copy h1 em{color:var(--teal);font-style:normal;}
+  .hero-copy p{color:var(--muted);font-size:15px;max-width:480px;margin-bottom:22px;}
+  .hero-actions{display:flex;gap:12px;}
+
+  .pipeline{background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius);padding:22px 26px;min-width:340px;}
+  .pipeline-label{font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;}
+
+  /* Data table */
+  .table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border-soft);}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{
+    text-align:left;font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--muted);background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--border-soft);white-space:nowrap;
+  }
+  tbody td{padding:9px 14px;border-bottom:1px solid var(--border-soft);color:var(--text);white-space:nowrap;font-family:var(--font-mono);font-size:12.5px;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:rgba(255,255,255,.02);}
+  .flag-bad{color:var(--coral);}
+  .flag-fixed{color:var(--teal);}
+  .flag-dup{color:var(--amber);}
+
+  .badge{font-family:var(--font-mono);font-size:10.5px;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.03em;}
+  .badge-error{background:rgba(255,107,107,.12);color:var(--coral);}
+  .badge-ok{background:rgba(53,208,186,.12);color:var(--teal);}
+  .badge-warn{background:rgba(242,166,90,.12);color:var(--amber);}
+
+  .log-list{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
+  .log-item{display:flex;gap:10px;font-size:13px;color:var(--muted);align-items:flex-start;}
+  .log-item .tick{color:var(--teal);font-family:var(--font-mono);flex-shrink:0;}
+
+  .chart-card{background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius);padding:22px;}
+  .chart-card .chart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .chart-card h3{font-family:var(--font-display);font-size:15px;font-weight:600;}
+  .chart-card .sub{font-size:12px;color:var(--muted);font-family:var(--font-mono);}
+  .chart-holder{position:relative;height:260px;}
+  .chart-holder.tall{height:320px;}
+
+  /* Stat cards */
+  .stat-num{font-family:var(--font-mono);font-size:22px;font-weight:600;color:var(--text);}
+  .stat-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+  .corr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;}
+  .corr-cell{border-radius:8px;padding:10px 8px;text-align:center;font-family:var(--font-mono);}
+  .corr-cell .pair{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.02em;display:block;margin-bottom:4px;}
+  .corr-cell .val{font-size:15px;font-weight:600;}
+
+  /* Insight / decision cards */
+  .insight-card{
+    background:var(--panel);border:1px solid var(--border-soft);border-left:3px solid var(--teal);
+    border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;
+  }
+  .insight-card.priority-alta{border-left-color:var(--coral);}
+  .insight-card.priority-media{border-left-color:var(--amber);}
+  .insight-head{display:flex;justify-content:space-between;align-items:center;}
+  .insight-head h4{font-family:var(--font-display);font-size:14.5px;font-weight:600;}
+  .priority-tag{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;padding:2px 8px;border-radius:20px;}
+  .priority-alta .priority-tag{background:rgba(255,107,107,.12);color:var(--coral);}
+  .priority-media .priority-tag{background:rgba(242,166,90,.12);color:var(--amber);}
+  .priority-baixa .priority-tag{background:rgba(108,140,255,.12);color:var(--indigo);}
+  .insight-card p{font-size:13px;color:var(--muted);}
+  .insight-card .action{font-family:var(--font-mono);font-size:12px;color:var(--teal);}
+
+  /* Funnel */
+  .funnel{display:flex;flex-direction:column;gap:10px;margin-top:8px;}
+  .funnel-row{display:grid;grid-template-columns:140px 1fr 90px 70px;align-items:center;gap:14px;}
+  .funnel-name{font-size:13px;font-weight:500;}
+  .funnel-bar-bg{background:var(--panel-2);border-radius:8px;height:26px;overflow:hidden;border:1px solid var(--border-soft);}
+  .funnel-bar{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--indigo),var(--teal));transition:width 1s ease;}
+  .funnel-val{font-family:var(--font-mono);font-size:13px;text-align:right;}
+  .funnel-drop{font-family:var(--font-mono);font-size:11.5px;color:var(--coral);text-align:right;}
+
+  footer{padding:32px 36px;text-align:center;color:var(--muted-2);font-size:12.5px;font-family:var(--font-mono);}
+  footer a{color:var(--teal);}
+
+  @media (max-width:980px){
+    .app{grid-template-columns:1fr;}
+    .sidebar{display:none;}
+    .grid-4,.grid-3,.grid-2{grid-template-columns:1fr;}
+    .hero-copy h1{font-size:28px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">DF</div>
+      <div class="brand-text">
+        <h1>DataFlow</h1>
+        <span>Intelligence Platform</span>
+      </div>
+    </div>
+
+    <nav class="nav-group">
+      <div class="nav-label">Painel</div>
+      <a class="nav-item active" data-target="hero"><span class="dot"></span> Visão geral</a>
+      <a class="nav-item" data-target="limpeza"><span class="dot"></span> Limpeza de dados</a>
+      <a class="nav-item" data-target="estatistica"><span class="dot"></span> Análise estatística</a>
+    </nav>
+    <nav class="nav-group">
+      <div class="nav-label">Visualização</div>
+      <a class="nav-item" data-target="graficos"><span class="dot"></span> Gráficos &amp; relatórios</a>
+      <a class="nav-item" data-target="tendencias"><span class="dot"></span> Padrões &amp; tendências</a>
+    </nav>
+    <nav class="nav-group">
+      <div class="nav-label">Estratégia</div>
+      <a class="nav-item" data-target="decisao"><span class="dot"></span> Apoio à decisão</a>
+      <a class="nav-item" data-target="otimizacao"><span class="dot"></span> Otimização de processos</a>
+      <a class="nav-item" data-target="insights"><span class="dot"></span> Insights de negócio</a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="status-pill"><span class="blip"></span> Dados simulados · atualização em tempo real</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <div class="topbar">
+      <h2 id="topbarTitle">Visão geral</h2>
+      <div class="topbar-actions">
+        <span class="topbar-meta" id="clock"></span>
+        <button class="btn btn-ghost" onclick="window.print()">Exportar relatório</button>
+        <button class="btn btn-primary" id="simulateBtn">↻ Simular novos dados</button>
+      </div>
+    </div>
+
+    <!-- HERO / OVERVIEW -->
+    <section id="hero" class="hero">
+      <div class="hero-top">
+        <div class="hero-copy">
+          <div class="eyebrow">Sistema completo de mapeamento e análise de dados</div>
+          <h1>Do dado bruto ao <em>insight acionável</em>, em um só fluxo.</h1>
+          <p>Uma plataforma de demonstração que simula, do início ao fim, um pipeline real de dados empresariais: coleta, limpeza, tratamento, análise estatística, visualização, detecção de padrões, apoio à decisão e otimização de processos.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" onclick="document.getElementById('limpeza').scrollIntoView({behavior:'smooth'})">Ver pipeline em ação</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('insights').scrollIntoView({behavior:'smooth'})">Ir para insights</button>
+          </div>
+        </div>
+
+        <div class="pipeline">
+          <div class="pipeline-label">Pipeline de dados · ao vivo</div>
+          <svg id="pipelineSvg" viewBox="0 0 320 140" width="320" height="140">
+            <line x1="30" y1="30" x2="290" y2="30" stroke="#1E2A44" stroke-width="2"/>
+            <line x1="30" y1="110" x2="290" y2="110" stroke="#1E2A44" stroke-width="2"/>
+            <path d="M30 30 C 100 30, 100 110, 160 110 S 220 30, 290 30" fill="none" stroke="#1E2A44" stroke-width="2" id="pathMid"/>
+            <g font-family="JetBrains Mono" font-size="9" fill="#8592A6">
+              <text x="30" y="20" text-anchor="middle">BRUTO</text>
+              <text x="160" y="130" text-anchor="middle">LIMPEZA</text>
+              <text x="290" y="20" text-anchor="middle">ANÁLISE</text>
+            </g>
+            <circle cx="30" cy="30" r="5" fill="#6C8CFF"/>
+            <circle cx="160" cy="110" r="5" fill="#F2A65A"/>
+            <circle cx="290" cy="30" r="5" fill="#35D0BA"/>
+            <circle r="3.5" fill="#35D0BA">
+              <animateMotion dur="3s" repeatCount="indefinite" path="M30 30 L290 30"/>
+            </circle>
+            <circle r="3.5" fill="#F2A65A">
+              <animateMotion dur="3.6s" repeatCount="indefinite" path="M30 110 L290 110"/>
+            </circle>
+            <circle r="3.5" fill="#6C8CFF">
+              <animateMotion dur="4.2s" repeatCount="indefinite" path="M30 30 C 100 30, 100 110, 160 110 S 220 30, 290 30"/>
+            </circle>
+          </svg>
+        </div>
+      </div>
+
+      <div class="grid grid-4" id="kpiGrid"></div>
+    </section>
+
+    <!-- LIMPEZA -->
+    <section id="limpeza">
+      <div class="section-head">
+        <div class="eyebrow">Etapa 01</div>
+        <h2>Limpeza e organização de dados</h2>
+        <p>O motor identifica valores ausentes, duplicados, formatos inconsistentes e outliers no conjunto bruto — e aplica correções automáticas antes de liberar os dados para análise.</p>
+      </div>
+      <div class="grid grid-2" style="align-items:start;">
+        <div class="card">
+          <div class="card-title">Antes · dados brutos</div>
+          <div class="table-wrap"><table id="dirtyTable"></table></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Depois · dados tratados</div>
+          <div class="table-wrap"><table id="cleanTable"></table></div>
+          <div class="log-list" id="cleanLog"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ESTATISTICA -->
+    <section id="estatistica">
+      <div class="section-head">
+        <div class="eyebrow">Etapa 02</div>
+        <h2>Análise estatística</h2>
+        <p>Medidas de tendência central, dispersão e correlação calculadas em tempo real sobre a base tratada de receita, custos, satisfação e churn.</p>
+      </div>
+      <div class="grid grid-4" id="statCards"></div>
+      <div class="card" style="margin-top:18px;">
+        <div class="card-title">Matriz de correlação entre métricas</div>
+        <div class="corr-grid" id="corrGrid"></div>
+      </div>
+    </section>
+
+    <!-- GRAFICOS -->
+    <section id="graficos">
+      <div class="section-head">
+        <div class="eyebrow">Etapa 03</div>
+        <h2>Geração de gráficos e relatórios</h2>
+        <p>Visualizações geradas automaticamente a partir da base tratada — atualizadas a cada nova simulação de dados.</p>
+      </div>
+      <div class="grid grid-2">
+        <div class="chart-card">
+          <div class="chart-head"><h3>Receita vs. Custo (12 meses)</h3><span class="sub">R$ / mês</span></div>
+          <div class="chart-holder"><canvas id="chartRevenue"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-head"><h3>Receita por canal</h3><span class="sub">participação %</span></div>
+          <div class="chart-holder"><canvas id="chartChannel"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-head"><h3>Novos clientes vs. churn</h3><span class="sub">contagem mensal</span></div>
+          <div class="chart-holder"><canvas id="chartChurn"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-head"><h3>Satisfação vs. Receita</h3><span class="sub">dispersão / correlação</span></div>
+          <div class="chart-holder"><canvas id="chartScatter"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TENDENCIAS -->
+    <section id="tendencias">
+      <div class="section-head">
+        <div class="eyebrow">Etapa 04</div>
+        <h2>Identificação de padrões e tendências</h2>
+        <p>Regressão linear sobre a série de receita para apontar a direção da tendência, com destaque automático de anomalias por desvio padrão (z-score).</p>
+      </div>
+      <div class="grid grid-3">
+        <div class="card">
+          <div class="card-title">Tendência de receita</div>
+          <div class="stat-num" id="trendValue">—</div>
+          <div class="stat-sub" id="trendDesc">calculando…</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Anomalias detectadas</div>
+          <div class="stat-num" id="anomalyCount">—</div>
+          <div class="stat-sub" id="anomalyDesc">meses fora do padrão (|z| &gt; 1.5)</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Sazonalidade</div>
+          <div class="stat-num" id="seasonValue">—</div>
+          <div class="stat-sub">pico identificado no ano simulado</div>
+        </div>
+      </div>
+      <div class="chart-card" style="margin-top:18px;">
+        <div class="chart-head"><h3>Receita real vs. linha de tendência</h3><span class="sub">pontos vermelhos = anomalia</span></div>
+        <div class="chart-holder tall"><canvas id="chartTrend"></canvas></div>
+      </div>
+    </section>
+
+    <!-- DECISAO -->
+    <section id="decisao">
+      <div class="section-head">
+        <div class="eyebrow">Etapa 05</div>
+        <h2>Apoio à tomada de decisão</h2>
+        <p>Regras de negócio cruzam os indicadores tratados e geram recomendações priorizadas automaticamente.</p>
+      </div>
+      <div class="grid grid-3" id="decisionGrid"></div>
+    </section>
+
+    <!-- OTIMIZACAO -->
+    <section id="otimizacao">
+      <div class="section-head">
+        <div class="eyebrow">Etapa 06</div>
+        <h2>Otimização de processos empresariais</h2>
+        <p>Funil de conversão simulado, do primeiro contato ao fechamento, com identificação automática do maior gargalo.</p>
+      </div>
+      <div class="grid grid-2" style="align-items:start;">
+        <div class="card">
+          <div class="card-title">Funil de conversão</div>
+          <div class="funnel" id="funnelWrap"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Diagnóstico do gargalo</div>
+          <div id="bottleneckBox"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INSIGHTS -->
+    <section id="insights" style="border-bottom:none;">
+      <div class="section-head">
+        <div class="eyebrow">Etapa 07</div>
+        <h2>Geração de insights para negócios</h2>
+        <p>Síntese final: leitura consolidada de desempenho, riscos e oportunidades a partir de todas as etapas anteriores.</p>
+      </div>
+      <div class="grid grid-3" id="insightGrid"></div>
+    </section>
+
+    <footer>
+      DataFlow Intelligence — projeto de portfólio · dados 100% simulados no navegador, sem envio a servidores.
+    </footer>
+
+  </main>
+</div>
+
+<script>
+/* ==================================================================
+   1. NAVEGAÇÃO
+================================================================== */
+const navItems = document.querySelectorAll('.nav-item');
+const sections = [...navItems].map(n => document.getElementById(n.dataset.target));
+navItems.forEach(item=>{
+  item.addEventListener('click',()=>{
+    document.getElementById(item.dataset.target).scrollIntoView({behavior:'smooth'});
+  });
+});
+const topbarTitle = document.getElementById('topbarTitle');
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      navItems.forEach(n=>n.classList.remove('active'));
+      const active = document.querySelector(`.nav-item[data-target="${e.target.id}"]`);
+      if(active){active.classList.add('active');topbarTitle.textContent = active.textContent.trim();}
+    }
+  });
+},{rootMargin:'-40% 0px -50% 0px'});
+sections.forEach(s=>io.observe(s));
+
+function tickClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'medium'});
+}
+tickClock(); setInterval(tickClock,1000);
+
+/* ==================================================================
+   2. GERAÇÃO DE DADOS SIMULADOS
+================================================================== */
+const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function rand(min,max){return Math.random()*(max-min)+min;}
+function fmtBRL(v){return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});}
+function mean(arr){return arr.reduce((a,b)=>a+b,0)/arr.length;}
+function stddev(arr){const m=mean(arr);return Math.sqrt(mean(arr.map(x=>(x-m)**2)));}
+function median(arr){const s=[...arr].sort((a,b)=>a-b);const mid=Math.floor(s.length/2);return s.length%2?s[mid]:(s[mid-1]+s[mid])/2;}
+function correlation(a,b){
+  const ma=mean(a), mb=mean(b);
+  const num = a.reduce((s,v,i)=>s+(v-ma)*(b[i]-mb),0);
+  const den = Math.sqrt(a.reduce((s,v)=>s+(v-ma)**2,0) * b.reduce((s,v)=>s+(v-mb)**2,0));
+  return den===0?0:num/den;
+}
+function linearRegression(y){
+  const n=y.length; const x=[...Array(n).keys()];
+  const mx=mean(x), my=mean(y);
+  const slope = x.reduce((s,v,i)=>s+(v-mx)*(y[i]-my),0) / x.reduce((s,v)=>s+(v-mx)**2,0);
+  const intercept = my - slope*mx;
+  return {slope, intercept, line:x.map(xi=>intercept+slope*xi)};
+}
+
+let DATA = null;
+
+function generateData(){
+  const baseRevenue = rand(140000,190000);
+  const growth = rand(0.01,0.045);
+  const revenue=[], cost=[], newCustomers=[], churn=[], satisfaction=[];
+  let rev = baseRevenue;
+  for(let i=0;i<12;i++){
+    const seasonal = (i===10||i===11) ? rand(1.15,1.3) : 1; // pico fim de ano
+    rev = rev*(1+growth) * (0.94+Math.random()*0.12) * (i===5? rand(0.75,0.85):1); // queda simulada em Jun (anomalia)
+    revenue.push(Math.round(rev*seasonal));
+    cost.push(Math.round(rev*seasonal*rand(0.55,0.72)));
+    newCustomers.push(Math.round(rand(80,260)*(seasonal)));
+    churn.push(Math.round(rand(10,45)));
+    satisfaction.push(+(rand(6.2,9.4)).toFixed(1));
+  }
+  const channels = {
+    'Orgânico': rand(20,34), 'Pago (Ads)': rand(18,28), 'Indicação': rand(10,20),
+    'Parcerias': rand(8,16), 'E-mail': rand(6,14)
+  };
+  const total = Object.values(channels).reduce((a,b)=>a+b,0);
+  Object.keys(channels).forEach(k=>channels[k]=+(channels[k]/total*100).toFixed(1));
+
+  const funnel = [
+    {name:'Visitantes', value: Math.round(rand(38000,52000))},
+  ];
+  funnel.push({name:'Leads', value: Math.round(funnel[0].value*rand(0.18,0.26))});
+  funnel.push({name:'Oportunidades', value: Math.round(funnel[1].value*rand(0.30,0.42))});
+  funnel.push({name:'Propostas', value: Math.round(funnel[2].value*rand(0.45,0.6))});
+  funnel.push({name:'Clientes', value: Math.round(funnel[3].value*rand(0.22,0.38))});
+
+  return {revenue, cost, newCustomers, churn, satisfaction, channels, funnel,
+    cac: rand(180,420), ltv: rand(900,2400), margin: rand(18,34)};
+}
+
+function generateDirtyRows(){
+  const names=['Ana Souza','joão pereira','MARIA LIMA','Carlos  Dias','Ana Souza','Beatriz Alves','','Rafael Nunes','pedro costa','Larissa Melo'];
+  const rows=[];
+  for(let i=0;i<10;i++){
+    let val = Math.round(rand(120,4200));
+    if(i===3) val = 98500; // outlier
+    rows.push({
+      id:1000+i,
+      nome: names[i],
+      data: i===5 ? '2026/13/40' : `0${(i%9)+1}/0${(i%8)+1}/2026`,
+      valor: i===6 ? null : val,
+      canal: i===8 ? 'organico ' : ['Orgânico','Pago','Indicação','E-mail'][i%4],
+      status: i===2 ? 'ativo ' : 'Ativo'
+    });
+  }
+  return rows;
+}
+
+/* ==================================================================
+   3. RENDER — KPIs
+================================================================== */
+let charts = {};
+function destroyCharts(){Object.values(charts).forEach(c=>c&&c.destroy());charts={};}
+
+function renderKPIs(){
+  const totalRev = DATA.revenue.reduce((a,b)=>a+b,0);
+  const totalCost = DATA.cost.reduce((a,b)=>a+b,0);
+  const margin = ((totalRev-totalCost)/totalRev*100);
+  const avgSat = mean(DATA.satisfaction);
+  const lastGrowth = ((DATA.revenue[11]-DATA.revenue[10])/DATA.revenue[10]*100);
+  const kpis = [
+    {label:'Receita anual', value: fmtBRL(totalRev), delta: lastGrowth, unit:''},
+    {label:'Margem líquida', value: margin.toFixed(1)+'%', delta: margin-25, unit:''},
+    {label:'CAC médio', value: fmtBRL(DATA.cac), delta: -8.4, unit:''},
+    {label:'Satisfação (NPS-like)', value: avgSat.toFixed(1)+' / 10', delta: (avgSat-7.5)*10, unit:''},
+  ];
+  const grid = document.getElementById('kpiGrid');
+  grid.innerHTML = kpis.map(k=>`
+    <div class="card kpi">
+      <div class="card-title">${k.label}</div>
+      <div class="value">${k.value}</div>
+      <div class="delta ${k.delta>=0?'up':'down'}">${k.delta>=0?'▲':'▼'} ${Math.abs(k.delta).toFixed(1)}%</div>
+    </div>`).join('');
+}
+
+/* ==================================================================
+   4. RENDER — LIMPEZA
+================================================================== */
+function titleCase(s){return s.trim().toLowerCase().split(' ').filter(Boolean).map(w=>w[0].toUpperCase()+w.slice(1)).join(' ');}
+
+function renderCleaning(){
+  const dirty = generateDirtyRows();
+  const dirtyTable = document.getElementById('dirtyTable');
+  dirtyTable.innerHTML = `<thead><tr><th>ID</th><th>Nome</th><th>Data</th><th>Valor</th><th>Canal</th><th>Status</th></tr></thead>
+  <tbody>${dirty.map(r=>`<tr>
+    <td>${r.id}</td>
+    <td class="${!r.nome?'flag-bad':''}">${r.nome||'(vazio)'}</td>
+    <td class="${r.data.includes('/13/')?'flag-bad':''}">${r.data}</td>
+    <td class="${r.valor===null?'flag-bad':(r.valor>4000?'flag-dup':'')}">${r.valor===null?'null':r.valor}</td>
+    <td>${r.canal}</td>
+    <td>${r.status}</td>
+  </tr>`).join('')}</tbody>`;
+
+  // Limpeza
+  const seen = new Set(); const log=[];
+  const values = dirty.map(r=>r.valor).filter(v=>v!==null);
+  const med = median(values);
+  const q1 = median(values.filter(v=>v<=med)); const q3 = median(values.filter(v=>v>=med));
+  const iqr = q3-q1; const upperBound = q3+1.5*iqr;
+
+  const clean = dirty.filter(r=>{
+    const key = r.nome.trim().toLowerCase();
+    if(seen.has(key)){log.push(`Duplicata removida: registro de "${titleCase(r.nome)}"`); return false;}
+    seen.add(key); return true;
+  }).map(r=>{
+    const fixed = {...r};
+    if(!fixed.nome){fixed.nome='(sem nome)'; log.push(`Nome ausente preenchido com placeholder no ID ${r.id}`);}
+    else fixed.nome = titleCase(fixed.nome);
+    if(fixed.valor===null){fixed.valor=Math.round(med); log.push(`Valor ausente no ID ${r.id} preenchido com a mediana (${Math.round(med)})`);}
+    if(fixed.valor>upperBound){log.push(`Outlier no ID ${r.id} (valor ${fixed.valor}) marcado para revisão`);}
+    if(fixed.data.includes('/13/')){fixed.data='—'; log.push(`Data inválida no ID ${r.id} normalizada`);}
+    fixed.canal = titleCase(fixed.canal);
+    fixed.status = titleCase(fixed.status);
+    return fixed;
+  });
+
+  const cleanTable = document.getElementById('cleanTable');
+  cleanTable.innerHTML = `<thead><tr><th>ID</th><th>Nome</th><th>Data</th><th>Valor</th><th>Canal</th><th>Status</th></tr></thead>
+  <tbody>${clean.map(r=>`<tr>
+    <td>${r.id}</td><td>${r.nome}</td><td>${r.data}</td>
+    <td class="${r.valor>upperBound?'flag-dup':''}">${r.valor}</td>
+    <td>${r.canal}</td><td><span class="badge badge-ok">${r.status}</span></td>
+  </tr>`).join('')}</tbody>`;
+
+  document.getElementById('cleanLog').innerHTML = log.map(l=>`<div class="log-item"><span class="tick">✓</span> ${l}</div>`).join('')
+    + `<div class="log-item"><span class="tick">✓</span> Limite de outlier calculado via IQR: valores acima de ${Math.round(upperBound)} sinalizados</div>`;
+}
+
+/* ==================================================================
+   5. RENDER — ESTATÍSTICA
+================================================================== */
+function renderStats(){
+  const rev = DATA.revenue;
+  const stats = [
+    {label:'Média mensal', value: fmtBRL(mean(rev))},
+    {label:'Mediana mensal', value: fmtBRL(median(rev))},
+    {label:'Desvio padrão', value: fmtBRL(stddev(rev))},
+    {label:'Coef. de variação', value: (stddev(rev)/mean(rev)*100).toFixed(1)+'%'},
+  ];
+  document.getElementById('statCards').innerHTML = stats.map(s=>`
+    <div class="card"><div class="card-title">${s.label}</div><div class="stat-num">${s.value}</div></div>`).join('');
+
+  const pairs = [
+    {a:'Receita', b:'Custo', va:DATA.revenue, vb:DATA.cost},
+    {a:'Receita', b:'Satisfação', va:DATA.revenue, vb:DATA.satisfaction},
+    {a:'Satisfação', b:'Churn', va:DATA.satisfaction, vb:DATA.churn},
+    {a:'Novos clientes', b:'Churn', va:DATA.newCustomers, vb:DATA.churn},
+  ];
+  document.getElementById('corrGrid').innerHTML = pairs.map(p=>{
+    const c = correlation(p.va,p.vb);
+    const color = c>0.4?'var(--teal)': c<-0.4?'var(--coral)':'var(--amber)';
+    return `<div class="corr-cell" style="background:rgba(255,255,255,.02);border:1px solid var(--border-soft);">
+      <span class="pair">${p.a} × ${p.b}</span>
+      <span class="val" style="color:${color}">${c.toFixed(2)}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ==================================================================
+   6. RENDER — GRÁFICOS
+================================================================== */
+const chartDefaults = {
+  color:'#8592A6',
+  font:{family:'JetBrains Mono',size:10.5},
+};
+function baseGrid(){return {color:'#182238',drawTicks:false};}
+
+function renderCharts(){
+  const ctxRev = document.getElementById('chartRevenue');
+  charts.rev = new Chart(ctxRev,{
+    type:'line',
+    data:{labels:MONTHS, datasets:[
+      {label:'Receita', data:DATA.revenue, borderColor:'#35D0BA', backgroundColor:'rgba(53,208,186,.12)', fill:true, tension:.35, pointRadius:3},
+      {label:'Custo', data:DATA.cost, borderColor:'#6C8CFF', backgroundColor:'rgba(108,140,255,.08)', fill:true, tension:.35, pointRadius:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#E7ECF3',font:{family:'Inter',size:11}}}},
+      scales:{x:{ticks:{color:'#8592A6',font:{family:'JetBrains Mono',size:10}},grid:baseGrid()},
+               y:{ticks:{color:'#8592A6',font:{family:'JetBrains Mono',size:10}},grid:baseGrid()}}}
+  });
+
+  const ctxCh = document.getElementById('chartChannel');
+  charts.channel = new Chart(ctxCh,{
+    type:'doughnut',
+    data:{labels:Object.keys(DATA.channels), datasets:[{data:Object.values(DATA.channels),
+      backgroundColor:['#35D0BA','#6C8CFF','#F2A65A','#FF6B6B','#8592A6'], borderColor:'#121B2E', borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#E7ECF3',font:{family:'Inter',size:11},boxWidth:10}}}}
+  });
+
+  const ctxChurn = document.getElementById('chartChurn');
+  charts.churn = new Chart(ctxChurn,{
+    type:'bar',
+    data:{labels:MONTHS, datasets:[
+      {label:'Novos clientes', data:DATA.newCustomers, backgroundColor:'#35D0BA', borderRadius:4},
+      {label:'Churn', data:DATA.churn, backgroundColor:'#FF6B6B', borderRadius:4},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#E7ECF3',font:{family:'Inter',size:11}}}},
+      scales:{x:{ticks:{color:'#8592A6',font:{family:'JetBrains Mono',size:10}},grid:baseGrid()},
+               y:{ticks:{color:'#8592A6',font:{family:'JetBrains Mono',size:10}},grid:baseGrid()}}}
+  });
+
+  const ctxSc = document.getElementById('chartScatter');
+  charts.scatter = new Chart(ctxSc,{
+    type:'scatter',
+    data:{datasets:[{label:'Mês', data:DATA.satisfaction.map((s,i)=>({x:s,y:DATA.revenue[i]})),
+      backgroundColor:'#F2A65A', pointRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{title:{display:true,text:'Satisfação',color:'#8592A6',font:{family:'Inter',size:11}},ticks:{color:'#8592A6',font:{family:'JetBrains Mono',size:10}},grid:baseGrid()},
+               y:{title:{display:true,text:'Receita',color:'#8592A6',font:{family:'Inter',size:11}},ticks:{color:'#8592A6',font:{family:'JetBrains Mono',size:10}},grid:baseGrid()}}}
+  });
+}
+
+/* ==================================================================
+   7. RENDER — TENDÊNCIAS / ANOMALIAS
+================================================================== */
+function renderTrend(){
+  const rev = DATA.revenue;
+  const {slope, line} = linearRegression(rev);
+  const m = mean(rev), sd = stddev(rev);
+  const anomalies = rev.map((v,i)=>Math.abs((v-m)/sd) > 1.5 ? i : -1).filter(i=>i>=0);
+  const monthlyGrowthPct = (slope/m*100);
+
+  document.getElementById('trendValue').textContent = (monthlyGrowthPct>=0?'+':'')+monthlyGrowthPct.toFixed(2)+'% / mês';
+  document.getElementById('trendDesc').textContent = monthlyGrowthPct>=0
+    ? 'Tendência de crescimento consistente ao longo do ano simulado.'
+    : 'Tendência de queda — recomenda-se investigação nas causas.';
+  document.getElementById('anomalyCount').textContent = anomalies.length;
+  document.getElementById('seasonValue').textContent = MONTHS[rev.indexOf(Math.max(...rev))];
+
+  const ctx = document.getElementById('chartTrend');
+  charts.trend = new Chart(ctx,{
+    type:'line',
+    data:{labels:MONTHS, datasets:[
+      {label:'Receita real', data:rev, borderColor:'#6C8CFF', backgroundColor:'transparent', tension:.3,
+        pointRadius: rev.map((v,i)=>anomalies.includes(i)?7:3),
+        pointBackgroundColor: rev.map((v,i)=>anomalies.includes(i)?'#FF6B6B':'#6C8CFF')},
+      {label:'Linha de tendência', data:line, borderColor:'#35D0BA', borderDash:[6,4], pointRadius:0},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#E7ECF3',font:{family:'Inter',size:11}}}},
+      scales:{x:{ticks:{color:'#8592A6',font:{family:'JetBrains Mono',size:10}},grid:baseGrid()},
+               y:{ticks:{color:'#8592A6',font:{family:'JetBrains Mono',size:10}},grid:baseGrid()}}}
+  });
+}
+
+/* ==================================================================
+   8. RENDER — APOIO À DECISÃO
+================================================================== */
+function renderDecisions(){
+  const totalRev = DATA.revenue.reduce((a,b)=>a+b,0);
+  const totalCost = DATA.cost.reduce((a,b)=>a+b,0);
+  const margin = (totalRev-totalCost)/totalRev*100;
+  const avgChurn = mean(DATA.churn);
+  const avgSat = mean(DATA.satisfaction);
+  const cards = [];
+
+  cards.push(margin < 25
+    ? {p:'alta', title:'Margem abaixo do saudável', text:`Margem líquida em ${margin.toFixed(1)}%, abaixo da meta de 25%. Estrutura de custos precisa de revisão.`, action:'Ação sugerida: revisar contratos de fornecedores e renegociar custo variável.'}
+    : {p:'baixa', title:'Margem dentro da meta', text:`Margem líquida em ${margin.toFixed(1)}%, saudável frente à meta de 25%.`, action:'Ação sugerida: manter monitoramento mensal.'});
+
+  cards.push(avgChurn > 25
+    ? {p:'alta', title:'Churn acima do limite de risco', text:`Média de ${avgChurn.toFixed(0)} cancelamentos/mês. Risco de erosão de base de clientes.`, action:'Ação sugerida: ativar campanha de retenção e pesquisa de motivo de saída.'}
+    : {p:'media', title:'Churn sob controle', text:`Média de ${avgChurn.toFixed(0)} cancelamentos/mês, dentro do esperado.`, action:'Ação sugerida: manter programa de fidelização atual.'});
+
+  cards.push(avgSat < 7.5
+    ? {p:'media', title:'Satisfação em queda', text:`Nota média de satisfação em ${avgSat.toFixed(1)}/10, abaixo do ideal.`, action:'Ação sugerida: revisar atendimento e tempo de resposta ao cliente.'}
+    : {p:'baixa', title:'Satisfação estável', text:`Nota média de satisfação em ${avgSat.toFixed(1)}/10.`, action:'Ação sugerida: usar como case em marketing.'});
+
+  const ratio = DATA.ltv/DATA.cac;
+  cards.push(ratio < 3
+    ? {p:'alta', title:'Relação LTV/CAC abaixo do ideal', text:`Relação atual de ${ratio.toFixed(1)}x — mercado recomenda ao menos 3x.`, action:'Ação sugerida: revisar canais de aquisição de maior custo.'}
+    : {p:'baixa', title:'Relação LTV/CAC saudável', text:`Relação atual de ${ratio.toFixed(1)}x, acima do mínimo recomendado.`, action:'Ação sugerida: escalar investimento nos canais mais eficientes.'});
+
+  document.getElementById('decisionGrid').innerHTML = cards.map(c=>`
+    <div class="insight-card priority-${c.p}">
+      <div class="insight-head"><h4>${c.title}</h4><span class="priority-tag">${c.p}</span></div>
+      <p>${c.text}</p>
+      <span class="action">${c.action}</span>
+    </div>`).join('');
+}
+
+/* ==================================================================
+   9. RENDER — OTIMIZAÇÃO DE PROCESSOS (FUNIL)
+================================================================== */
+function renderFunnel(){
+  const f = DATA.funnel;
+  const max = f[0].value;
+  let worstDropIdx = 0, worstDrop = 0;
+  document.getElementById('funnelWrap').innerHTML = f.map((stage,i)=>{
+    const pct = stage.value/max*100;
+    let dropTxt = '';
+    if(i>0){
+      const drop = (1 - stage.value/f[i-1].value)*100;
+      if(drop>worstDrop){worstDrop=drop; worstDropIdx=i;}
+      dropTxt = `-${drop.toFixed(0)}%`;
+    }
+    return `<div class="funnel-row">
+      <div class="funnel-name">${stage.name}</div>
+      <div class="funnel-bar-bg"><div class="funnel-bar" style="width:${pct}%"></div></div>
+      <div class="funnel-val">${stage.value.toLocaleString('pt-BR')}</div>
+      <div class="funnel-drop">${dropTxt}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('bottleneckBox').innerHTML = `
+    <div class="insight-card priority-alta" style="border-left:none;background:transparent;padding:0;">
+      <div class="insight-head"><h4>Maior gargalo: ${f[worstDropIdx-1]?.name} → ${f[worstDropIdx]?.name}</h4><span class="priority-tag">alta</span></div>
+      <p>Queda de <strong>${worstDrop.toFixed(0)}%</strong> entre essas etapas — o maior ponto de perda em todo o funil simulado.</p>
+      <span class="action">Ação sugerida: revisar critérios de qualificação e tempo de resposta nessa etapa para reduzir a perda.</span>
+    </div>`;
+}
+
+/* ==================================================================
+   10. RENDER — INSIGHTS FINAIS
+================================================================== */
+function renderInsights(){
+  const totalRev = DATA.revenue.reduce((a,b)=>a+b,0);
+  const growth = ((DATA.revenue[11]-DATA.revenue[0])/DATA.revenue[0]*100);
+  const bestChannel = Object.entries(DATA.channels).sort((a,b)=>b[1]-a[1])[0];
+  const corrSatChurn = correlation(DATA.satisfaction, DATA.churn);
+
+  const items = [
+    {title:'Crescimento anual', text:`A receita variou ${growth>=0?'+':''}${growth.toFixed(1)}% do início ao fim do período simulado, refletindo o efeito combinado de sazonalidade e aquisição de clientes.`},
+    {title:'Canal mais relevante', text:`"${bestChannel[0]}" concentra ${bestChannel[1].toFixed(1)}% da receita por canal — candidato natural a receber mais investimento.`},
+    {title:'Satisfação e retenção', text:`Correlação de ${corrSatChurn.toFixed(2)} entre satisfação e churn: ${corrSatChurn < -0.3 ? 'quanto maior a satisfação, menor o cancelamento — investir em experiência do cliente tem retorno direto.' : 'a relação é fraca no período, sugerindo que o churn tem outras causas predominantes.'}`},
+    {title:'Eficiência de aquisição', text:`Relação LTV/CAC de ${(DATA.ltv/DATA.cac).toFixed(1)}x indica ${DATA.ltv/DATA.cac>=3?'eficiência saudável':'necessidade de revisão'} na aquisição de clientes.`},
+    {title:'Ponto de atenção operacional', text:`O funil de conversão aponta a maior perda de oportunidades em uma única etapa — priorizar correções ali tem o maior potencial de impacto imediato.`},
+    {title:'Resumo executivo', text:`Receita total simulada de ${fmtBRL(totalRev)} no ano, com margem de ${((totalRev-DATA.cost.reduce((a,b)=>a+b,0))/totalRev*100).toFixed(1)}% — cenário ${((totalRev-DATA.cost.reduce((a,b)=>a+b,0))/totalRev*100) >= 25 ? 'saudável' : 'que pede atenção em custos'}.`},
+  ];
+
+  document.getElementById('insightGrid').innerHTML = items.map(i=>`
+    <div class="insight-card"><div class="insight-head"><h4>${i.title}</h4></div><p>${i.text}</p></div>`).join('');
+}
+
+/* ==================================================================
+   11. ORQUESTRAÇÃO
+================================================================== */
+function renderAll(){
+  destroyCharts();
+  renderKPIs();
+  renderCleaning();
+  renderStats();
+  renderCharts();
+  renderTrend();
+  renderDecisions();
+  renderFunnel();
+  renderInsights();
+}
+
+function runSimulation(){
+  DATA = generateData();
+  renderAll();
+}
+
+document.getElementById('simulateBtn').addEventListener('click', runSimulation);
+runSimulation();
+</script>
+</body>
+</html>
